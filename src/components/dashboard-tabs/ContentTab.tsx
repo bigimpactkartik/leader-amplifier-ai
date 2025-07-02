@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useContents } from "@/hooks/useContents";
-import { Loader2, Plus, RefreshCw, Trash2, Eye, ExternalLink, Edit, Save, Send } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Trash2, Eye, ExternalLink, Edit, Save, Send, Calendar } from "lucide-react";
+import ScheduleContentDialog from "@/components/ScheduleContentDialog";
 
 const ContentTab = () => {
   const { toast } = useToast();
@@ -29,6 +30,7 @@ const ContentTab = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [viewingContent, setViewingContent] = useState<any>(null);
   const [editingContent, setEditingContent] = useState<any>(null);
   const [editContentText, setEditContentText] = useState("");
@@ -335,6 +337,22 @@ const ContentTab = () => {
     }
   };
 
+  const handleScheduleContent = () => {
+    if (selectedContent.length === 0) {
+      toast({
+        title: "No Content Selected",
+        description: "Please select content to schedule",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsScheduleDialogOpen(true);
+  };
+
+  const getSelectedContentItems = () => {
+    return contents.filter(content => selectedContent.includes(content.id));
+  };
+
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case "published": return "bg-green-500/20 text-green-300";
@@ -377,7 +395,7 @@ const ContentTab = () => {
       </CardHeader>
       <CardContent>
         <div className="mb-6 space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button 
               onClick={handleGenerateMore}
               disabled={isGenerating}
@@ -476,6 +494,17 @@ const ContentTab = () => {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
+
+            {/* Schedule Content Button - Only show when content is selected */}
+            {selectedContent.length > 0 && (
+              <Button 
+                onClick={handleScheduleContent}
+                className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule Content Posting ({selectedContent.length})
+              </Button>
+            )}
           </div>
           
           {/* Platform Selection for Publishing */}
@@ -624,6 +653,13 @@ const ContentTab = () => {
             </TableBody>
           </Table>
         )}
+
+        {/* Schedule Content Dialog */}
+        <ScheduleContentDialog
+          isOpen={isScheduleDialogOpen}
+          onClose={() => setIsScheduleDialogOpen(false)}
+          selectedContent={getSelectedContentItems()}
+        />
 
         {/* View Content Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
