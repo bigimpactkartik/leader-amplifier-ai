@@ -113,10 +113,6 @@ export function useScheduledContent() {
 
       if (data) {
         setScheduledContent(prev => [...prev, ...data])
-        toast({
-          title: "Success",
-          description: `Successfully scheduled ${data.length} content item(s) for posting`
-        })
         return data
       }
     } catch (err) {
