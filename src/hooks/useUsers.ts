@@ -178,40 +178,6 @@ export function useUsers() {
     }
   }
 
-  // Login user by email and name (simplified - no password required as requested)
-  const loginUserByEmailAndName = async (email: string, name: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .eq('name', name)
-        .single()
-
-      if (error) {
-        throw error
-      }
-
-      if (data) {
-        setCurrentUser(data)
-        toast({
-          title: "Success",
-          description: `Welcome back, ${data.name || 'User'}!`
-        })
-        return data
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'User not found'
-      console.error('Error logging in user:', err)
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      })
-      throw err
-    }
-  }
-
   // Login user by email (simplified - no password required as requested)
   const loginUserByEmail = async (email: string) => {
     try {
@@ -298,7 +264,6 @@ export function useUsers() {
     updateUser,
     deleteUser,
     setCurrentUserById,
-    loginUserByEmailAndName,
     loginUserByEmail,
     logout
   }
