@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -41,17 +41,7 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
   const { currentUser } = useUsers()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  // Initialize schedule state for each selected content
-  const [contentSchedules, setContentSchedules] = useState<ContentSchedule[]>(
-    selectedContent.map(content => ({
-      contentId: content.id,
-      date: undefined,
-      time: "09:00",
-      platform: content.platform || "linkedin",
-      isValid: false
-    }))
-  )
+  const [contentSchedules, setContentSchedules] = useState<ContentSchedule[]>([])
 
   const platforms = [
     { value: "linkedin", label: "LinkedIn", icon: "💼" },
@@ -59,6 +49,28 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
     { value: "facebook", label: "Facebook", icon: "📘" },
     { value: "twitter", label: "X (Twitter)", icon: "🐦" }
   ]
+
+  // Initialize or update schedule state when selectedContent changes
+  useEffect(() => {
+    if (selectedContent.length > 0) {
+      const newSchedules = selectedContent.map(content => ({
+        contentId: content.id,
+        date: undefined,
+        time: "09:00",
+        platform: content.platform || "linkedin",
+        isValid: false
+      }))
+      setContentSchedules(newSchedules)
+    }
+  }, [selectedContent])
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setContentSchedules([])
+      setIsSubmitting(false)
+    }
+  }, [isOpen])
 
   const updateContentSchedule = (contentId: number, field: keyof ContentSchedule, value: any) => {
     setContentSchedules(prev => prev.map(schedule => {
@@ -165,7 +177,12 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
     }
   }
 
-  const isFormValid = contentSchedules.every(schedule => schedule.isValid)
+  const isFormValid = contentSchedules.length > 0 && contentSchedules.every(schedule => schedule.isValid)
+
+  // Don't render if no content is selected
+  if (selectedContent.length === 0) {
+    return null
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -173,116 +190,123 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-white text-xl">Schedule Content Posting</DialogTitle>
           <p className="text-gray-300 text-sm">
-            Set the date, time, and platform for each selected content item
+            Set the date, time, and platform for each selected content item ({selectedContent.length} items selected)
           </p>
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-white/10">
-                <TableHead className="text-white">Content Title/Description</TableHead>
-                <TableHead className="text-white">Platform Selection</TableHead>
-                <TableHead className="text-white">Date Picker</TableHead>
-                <TableHead className="text-white">Time Picker</TableHead>
-                <TableHead className="text-white">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {selectedContent.map((content) => {
-                const schedule = contentSchedules.find(s => s.contentId === content.id)
-                if (!schedule) return null
+          {contentSchedules.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-white mr-2" />
+              <span className="text-white">Loading selected content...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-white/10">
+                  <TableHead className="text-white">Content Title/Description</TableHead>
+                  <TableHead className="text-white">Platform Selection</TableHead>
+                  <TableHead className="text-white">Date Picker</TableHead>
+                  <TableHead className="text-white">Time Picker</TableHead>
+                  <TableHead className="text-white">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedContent.map((content) => {
+                  const schedule = contentSchedules.find(s => s.contentId === content.id)
+                  if (!schedule) return null
 
-                return (
-                  <TableRow key={content.id} className="border-white/10">
-                    {/* Content Title/Description */}
-                    <TableCell className="text-white max-w-xs">
-                      <div className="space-y-1">
-                        <div className="font-medium text-sm">Content #{content.id}</div>
-                        <div 
-                          className="text-gray-300 text-xs leading-relaxed"
-                          title={content.content || ''}
-                        >
-                          {truncateContent(content.content)}
-                        </div>
-                        <div className="text-gray-400 text-xs">
-                          Current: {content.platform || 'Not set'} • {content.type || 'Not set'}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* Platform Selection */}
-                    <TableCell>
-                      <Select 
-                        value={schedule.platform} 
-                        onValueChange={(value) => updateContentSchedule(content.id, 'platform', value)}
-                      >
-                        <SelectTrigger className="w-full bg-white/10 border-white/20 text-white">
-                          <SelectValue placeholder="Select platform" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                          {platforms.map((platform) => (
-                            <SelectItem key={platform.value} value={platform.value} className="text-white hover:bg-gray-700">
-                              <div className="flex items-center space-x-2">
-                                <span>{platform.icon}</span>
-                                <span>{platform.label}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-
-                    {/* Date Picker */}
-                    <TableCell>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20",
-                              !schedule.date && "text-gray-400"
-                            )}
+                  return (
+                    <TableRow key={content.id} className="border-white/10">
+                      {/* Content Title/Description */}
+                      <TableCell className="text-white max-w-xs">
+                        <div className="space-y-1">
+                          <div className="font-medium text-sm">Content #{content.id}</div>
+                          <div 
+                            className="text-gray-300 text-xs leading-relaxed"
+                            title={content.content || ''}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {schedule.date ? format(schedule.date, "MMM dd, yyyy") : "Pick date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={schedule.date}
-                            onSelect={(date) => updateContentSchedule(content.id, 'date', date)}
-                            disabled={(date) => date < new Date().setHours(0, 0, 0, 0)}
-                            initialFocus
-                            className="text-white"
+                            {truncateContent(content.content)}
+                          </div>
+                          <div className="text-gray-400 text-xs">
+                            Current: {content.platform || 'Not set'} • {content.type || 'Not set'}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Platform Selection */}
+                      <TableCell>
+                        <Select 
+                          value={schedule.platform} 
+                          onValueChange={(value) => updateContentSchedule(content.id, 'platform', value)}
+                        >
+                          <SelectTrigger className="w-full bg-white/10 border-white/20 text-white">
+                            <SelectValue placeholder="Select platform" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            {platforms.map((platform) => (
+                              <SelectItem key={platform.value} value={platform.value} className="text-white hover:bg-gray-700">
+                                <div className="flex items-center space-x-2">
+                                  <span>{platform.icon}</span>
+                                  <span>{platform.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+
+                      {/* Date Picker */}
+                      <TableCell>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20",
+                                !schedule.date && "text-gray-400"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {schedule.date ? format(schedule.date, "MMM dd, yyyy") : "Pick date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-700" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={schedule.date}
+                              onSelect={(date) => updateContentSchedule(content.id, 'date', date)}
+                              disabled={(date) => date < new Date().setHours(0, 0, 0, 0)}
+                              initialFocus
+                              className="text-white"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
+
+                      {/* Time Picker */}
+                      <TableCell>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            type="time"
+                            value={schedule.time}
+                            onChange={(e) => updateContentSchedule(content.id, 'time', e.target.value)}
+                            className="pl-10 bg-white/10 border-white/20 text-white"
                           />
-                        </PopoverContent>
-                      </Popover>
-                    </TableCell>
+                        </div>
+                      </TableCell>
 
-                    {/* Time Picker */}
-                    <TableCell>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          type="time"
-                          value={schedule.time}
-                          onChange={(e) => updateContentSchedule(content.id, 'time', e.target.value)}
-                          className="pl-10 bg-white/10 border-white/20 text-white"
-                        />
-                      </div>
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell>
-                      {getStatusBadge(schedule)}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                      {/* Status */}
+                      <TableCell>
+                        {getStatusBadge(schedule)}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </div>
 
         {/* Action Buttons */}

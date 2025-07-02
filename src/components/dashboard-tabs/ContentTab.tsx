@@ -657,7 +657,11 @@ const ContentTab = () => {
         {/* Schedule Content Dialog */}
         <ScheduleContentDialog
           isOpen={isScheduleDialogOpen}
-          onClose={() => setIsScheduleDialogOpen(false)}
+          onClose={() => {
+            setIsScheduleDialogOpen(false);
+            // Clear selections after scheduling
+            setSelectedContent([]);
+          }}
           selectedContent={getSelectedContentItems()}
         />
 
