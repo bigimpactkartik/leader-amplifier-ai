@@ -187,6 +187,35 @@ export interface Database {
           status?: string | null
         }
       }
+      scheduled_content: {
+        Row: {
+          id: number
+          created_at: string
+          user_id: number | null
+          content_id: number | null
+          status: string | null
+          scheduled_at: string | null
+          posted_at: string | null
+        }
+        Insert: {
+          id?: number
+          created_at?: string
+          user_id?: number | null
+          content_id?: number | null
+          status?: string | null
+          scheduled_at?: string | null
+          posted_at?: string | null
+        }
+        Update: {
+          id?: number
+          created_at?: string
+          user_id?: number | null
+          content_id?: number | null
+          status?: string | null
+          scheduled_at?: string | null
+          posted_at?: string | null
+        }
+      }
     }
   }
 }
@@ -214,6 +243,10 @@ export type IdeaGenerationPromptUpdate = Database['public']['Tables']['idea_gene
 export type ContentGenerationPrompt = Database['public']['Tables']['cotent_generation_prompt']['Row']
 export type ContentGenerationPromptInsert = Database['public']['Tables']['cotent_generation_prompt']['Insert']
 export type ContentGenerationPromptUpdate = Database['public']['Tables']['cotent_generation_prompt']['Update']
+
+export type ScheduledContent = Database['public']['Tables']['scheduled_content']['Row']
+export type ScheduledContentInsert = Database['public']['Tables']['scheduled_content']['Insert']
+export type ScheduledContentUpdate = Database['public']['Tables']['scheduled_content']['Update']
 
 // Test connection function
 export const testConnection = async () => {

@@ -9,10 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useContents } from "@/hooks/useContents";
-import { Loader2, Plus, RefreshCw, Trash2, Eye, ExternalLink, Edit, Save, Send } from "lucide-react";
+import { useScheduledContent } from "@/hooks/useScheduledContent";
+import { useUsers } from "@/hooks/useUsers";
+import { Loader2, Plus, RefreshCw, Trash2, Eye, ExternalLink, Edit, Save, Send, Calendar } from "lucide-react";
 
 const ContentTab = () => {
   const { toast } = useToast();
+  const { currentUser } = useUsers();
   const { 
     contents, 
     loading, 
@@ -23,6 +26,7 @@ const ContentTab = () => {
     updateContent,
     fetchContents 
   } = useContents();
+  const { scheduleContent } = useScheduledContent();
 
   const [selectedContent, setSelectedContent] = useState<number[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -38,6 +42,7 @@ const ContentTab = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
 
   // Form state for creating new content
   const [newContent, setNewContent] = useState({
@@ -88,6 +93,36 @@ const ContentTab = () => {
         ? prev.filter(p => p !== platform)
         : [...prev, platform]
     );
+  };
+
+  const handleScheduleContent = async () => {
+    if (selectedContent.length === 0) {
+      toast({
+        title: "No Content Selected",
+        description: "Please select content to schedule",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!currentUser) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to schedule content",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsScheduling(true);
+    try {
+      await scheduleContent(selectedContent, currentUser.id);
+      setSelectedContent([]);
+    } catch (error) {
+      // Error handling is done in the hook
+    } finally {
+      setIsScheduling(false);
+    }
   };
 
   const handlePublishSelected = async () => {
@@ -185,7 +220,7 @@ const ContentTab = () => {
         platform: newContent.platform,
         type: newContent.type,
         status: newContent.status,
-        user_id: 1 // Using demo user ID
+        user_id: currentUser?.id || 1
       });
 
       setNewContent({
@@ -476,6 +511,26 @@ const ContentTab = () => {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
+
+            {selectedContent.length > 0 && (
+              <Button 
+                onClick={handleScheduleContent}
+                disabled={isScheduling}
+                className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white"
+              >
+                {isScheduling ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Scheduling...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Schedule Content Posting
+                  </>
+                )}
+              </Button>
+            )}
           </div>
           
           {/* Platform Selection for Publishing */}
