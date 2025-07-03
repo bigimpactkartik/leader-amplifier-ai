@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -32,7 +30,6 @@ interface ContentSchedule {
   contentId: number
   date: Date | undefined
   time: string
-  platform: string
   isValid: boolean
 }
 
@@ -43,13 +40,6 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [contentSchedules, setContentSchedules] = useState<ContentSchedule[]>([])
 
-  const platforms = [
-    { value: "linkedin", label: "LinkedIn", icon: "💼" },
-    { value: "instagram", label: "Instagram", icon: "📷" },
-    { value: "facebook", label: "Facebook", icon: "📘" },
-    { value: "twitter", label: "X (Twitter)", icon: "🐦" }
-  ]
-
   // Initialize or update schedule state when selectedContent changes
   useEffect(() => {
     if (selectedContent.length > 0) {
@@ -57,7 +47,6 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
         contentId: content.id,
         date: undefined,
         time: "09:00",
-        platform: content.platform || "linkedin",
         isValid: false
       }))
       setContentSchedules(newSchedules)
@@ -77,19 +66,13 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
       if (schedule.contentId === contentId) {
         const updated = { ...schedule, [field]: value }
         
-        // Validate the schedule
+        // Validate the schedule - only check date and time now
         if (field === 'date' || field === 'time') {
           const isDateValid = (field === 'date' ? value : updated.date) && 
                              (field === 'date' ? value : updated.date) >= new Date().setHours(0, 0, 0, 0)
           const isTimeValid = (field === 'time' ? value : updated.time) !== ''
-          const isPlatformValid = updated.platform !== ''
           
-          updated.isValid = isDateValid && isTimeValid && isPlatformValid
-        } else if (field === 'platform') {
-          updated.isValid = updated.date !== undefined && 
-                           updated.date >= new Date().setHours(0, 0, 0, 0) && 
-                           updated.time !== '' && 
-                           value !== ''
+          updated.isValid = isDateValid && isTimeValid
         }
         
         return updated
@@ -105,7 +88,7 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
     if (invalidSchedules.length > 0) {
       toast({
         title: "Validation Error",
-        description: "Please complete all date, time, and platform selections",
+        description: "Please complete all date and time selections",
         variant: "destructive"
       })
       return
@@ -154,7 +137,7 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
     }
   }
 
-  const truncateContent = (content: string | null, maxLength: number = 60) => {
+  const truncateContent = (content: string | null, maxLength: number = 80) => {
     if (!content) return 'No content available'
     return content.length > maxLength ? content.substring(0, maxLength) + '...' : content
   }
@@ -186,11 +169,11 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gray-900 border-gray-700 max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="bg-gray-900 border-gray-700 max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-white text-xl">Schedule Content Posting</DialogTitle>
           <p className="text-gray-300 text-sm">
-            Set the date, time, and platform for each selected content item ({selectedContent.length} items selected)
+            Set the date and time for each selected content item ({selectedContent.length} items selected)
           </p>
         </DialogHeader>
         
@@ -205,7 +188,6 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
               <TableHeader>
                 <TableRow className="border-white/10">
                   <TableHead className="text-white">Content Title/Description</TableHead>
-                  <TableHead className="text-white">Platform Selection</TableHead>
                   <TableHead className="text-white">Date Picker</TableHead>
                   <TableHead className="text-white">Time Picker</TableHead>
                   <TableHead className="text-white">Status</TableHead>
@@ -219,41 +201,19 @@ const ScheduleContentDialog = ({ isOpen, onClose, selectedContent }: ScheduleCon
                   return (
                     <TableRow key={content.id} className="border-white/10">
                       {/* Content Title/Description */}
-                      <TableCell className="text-white max-w-xs">
-                        <div className="space-y-1">
+                      <TableCell className="text-white max-w-md">
+                        <div className="space-y-2">
                           <div className="font-medium text-sm">Content #{content.id}</div>
                           <div 
-                            className="text-gray-300 text-xs leading-relaxed"
+                            className="text-gray-300 text-sm leading-relaxed"
                             title={content.content || ''}
                           >
                             {truncateContent(content.content)}
                           </div>
                           <div className="text-gray-400 text-xs">
-                            Current: {content.platform || 'Not set'} • {content.type || 'Not set'}
+                            Platform: {content.platform || 'Not set'} • Type: {content.type || 'Not set'}
                           </div>
                         </div>
-                      </TableCell>
-
-                      {/* Platform Selection */}
-                      <TableCell>
-                        <Select 
-                          value={schedule.platform} 
-                          onValueChange={(value) => updateContentSchedule(content.id, 'platform', value)}
-                        >
-                          <SelectTrigger className="w-full bg-white/10 border-white/20 text-white">
-                            <SelectValue placeholder="Select platform" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-gray-800 border-gray-700">
-                            {platforms.map((platform) => (
-                              <SelectItem key={platform.value} value={platform.value} className="text-white hover:bg-gray-700">
-                                <div className="flex items-center space-x-2">
-                                  <span>{platform.icon}</span>
-                                  <span>{platform.label}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </TableCell>
 
                       {/* Date Picker */}
