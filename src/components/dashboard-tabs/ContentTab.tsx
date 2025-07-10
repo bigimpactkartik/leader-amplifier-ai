@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useContents } from "@/hooks/useContents";
+import { useScheduledContent } from "@/hooks/useScheduledContent";
 import { Loader2, Plus, RefreshCw, Trash2, Eye, ExternalLink, Edit, Save, Send, Calendar } from "lucide-react";
 import ScheduleContentDialog from "@/components/ScheduleContentDialog";
+import UpdateScheduleDialog from "@/components/UpdateScheduleDialog";
 
 const ContentTab = () => {
   const { toast } = useToast();
@@ -24,6 +26,7 @@ const ContentTab = () => {
     updateContent,
     fetchContents 
   } = useContents();
+  const { scheduledContent, fetchScheduledContent, updateScheduledContent } = useScheduledContent();
 
   const [selectedContent, setSelectedContent] = useState<number[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -40,6 +43,8 @@ const ContentTab = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isUpdateScheduleDialogOpen, setIsUpdateScheduleDialogOpen] = useState(false);
+  const [selectedContentForScheduleUpdate, setSelectedContentForScheduleUpdate] = useState<any>(null);
 
   // Form state for creating new content
   const [newContent, setNewContent] = useState({
@@ -353,6 +358,77 @@ const ContentTab = () => {
     return contents.filter(content => selectedContent.includes(content.id));
   };
 
+  // Get schedule status for a content item
+  const getScheduleStatus = (contentId: number) => {
+    const schedule = scheduledContent.find(sc => sc.content_id === contentId);
+    
+    if (schedule?.posted_at) {
+      return { status: 'posted', data: schedule };
+    } else if (schedule?.scheduled_at) {
+      return { status: 'scheduled', data: schedule };
+    } else {
+      return { status: 'not_scheduled', data: null };
+    }
+  };
+
+  // Handle schedule update click
+  const handleScheduleUpdateClick = (content: any) => {
+    const scheduleStatus = getScheduleStatus(content.id);
+    if (scheduleStatus.status === 'scheduled') {
+      setSelectedContentForScheduleUpdate({
+        content,
+        schedule: scheduleStatus.data
+      });
+      setIsUpdateScheduleDialogOpen(true);
+    }
+  };
+
+  // Convert UTC to IST (UTC+5:30)
+  const convertUTCToIST = (utcDateString: string) => {
+    const utcDate = new Date(utcDateString);
+    const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+    const istDate = new Date(utcDate.getTime() + istOffset);
+    return istDate.toISOString().slice(0, 16); // Format for datetime-local input
+  };
+
+  // Convert IST to UTC
+  const convertISTToUTC = (istDateString: string) => {
+    const istDate = new Date(istDateString);
+    const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+    const utcDate = new Date(istDate.getTime() - istOffset);
+    return utcDate.toISOString();
+  };
+
+  // Handle schedule update
+  const handleScheduleUpdate = async (newScheduleDateTime: string) => {
+    if (!selectedContentForScheduleUpdate) return;
+
+    try {
+      const utcDateTime = convertISTToUTC(newScheduleDateTime);
+      
+      await updateScheduledContent(selectedContentForScheduleUpdate.schedule.id, {
+        scheduled_at: utcDateTime
+      });
+
+      // Refresh scheduled content data
+      await fetchScheduledContent();
+      
+      toast({
+        title: "Success",
+        description: "Schedule updated successfully"
+      });
+
+      setIsUpdateScheduleDialogOpen(false);
+      setSelectedContentForScheduleUpdate(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update schedule",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case "published": return "bg-green-500/20 text-green-300";
@@ -566,90 +642,108 @@ const ContentTab = () => {
                 <TableHead className="text-white">Status</TableHead>
                 <TableHead className="text-white">Created</TableHead>
                 <TableHead className="text-white">Actions</TableHead>
+                <TableHead className="text-white">Schedule</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contents.map((item) => (
-                <TableRow key={item.id} className="border-white/10">
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={selectedContent.includes(item.id)}
-                      onChange={() => handleSelectContent(item.id)}
-                      className="w-4 h-4 text-purple-600 bg-white/10 border-white/30 rounded"
-                    />
-                  </TableCell>
-                  <TableCell className="text-white font-mono text-sm">
-                    {item.id}
-                  </TableCell>
-                  <TableCell className="text-white font-medium max-w-xs">
-                    <div 
-                      className="truncate" 
-                      title={item.content || ''}
-                    >
-                      {item.content || 'No content'}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-gray-300">{capitalizeFirst(item.type)}</TableCell>
-                  <TableCell className="text-gray-300">{capitalizeFirst(item.platform)}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-sm ${getStatusColor(item.status)}`}>
-                      {capitalizeFirst(item.status) || 'Draft'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-gray-300">{formatDate(item.created_at)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewContent(item)}
-                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+              {contents.map((item) => {
+                const scheduleStatus = getScheduleStatus(item.id);
+                return (
+                  <TableRow key={item.id} className="border-white/10">
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedContent.includes(item.id)}
+                        onChange={() => handleSelectContent(item.id)}
+                        className="w-4 h-4 text-purple-600 bg-white/10 border-white/30 rounded"
+                      />
+                    </TableCell>
+                    <TableCell className="text-white font-mono text-sm">
+                      {item.id}
+                    </TableCell>
+                    <TableCell className="text-white font-medium max-w-xs">
+                      <div 
+                        className="truncate" 
+                        title={item.content || ''}
                       >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditContent(item)}
-                        className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      {item.platform && (item.platform === 'linkedin' || item.platform === 'facebook') && (
+                        {item.content || 'No content'}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-gray-300">{capitalizeFirst(item.type)}</TableCell>
+                    <TableCell className="text-gray-300">{capitalizeFirst(item.platform)}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-sm ${getStatusColor(item.status)}`}>
+                        {capitalizeFirst(item.status) || 'Draft'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-gray-300">{formatDate(item.created_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handlePublishSingle(item.id, item.platform!)}
-                          disabled={isPublishing}
-                          className="text-green-400 hover:text-green-300 hover:bg-green-500/20"
-                          title={`Publish to ${capitalizeFirst(item.platform)}`}
+                          onClick={() => handleViewContent(item)}
+                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
                         >
-                          <Send className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      )}
-                      {item.content_url && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(item.content_url!, '_blank')}
-                          className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
+                          onClick={() => handleEditContent(item)}
+                          className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <Edit className="h-4 w-4" />
                         </Button>
+                        {item.platform && (item.platform === 'linkedin' || item.platform === 'facebook') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePublishSingle(item.id, item.platform!)}
+                            disabled={isPublishing}
+                            className="text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                            title={`Publish to ${capitalizeFirst(item.platform)}`}
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {item.content_url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(item.content_url!, '_blank')}
+                            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteContent(item.id)}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {scheduleStatus.status === 'posted' ? (
+                        <span className="text-green-400 text-sm font-medium">Posted</span>
+                      ) : scheduleStatus.status === 'scheduled' ? (
+                        <button
+                          onClick={() => handleScheduleUpdateClick(item)}
+                          className="text-blue-400 hover:text-blue-300 text-sm font-medium underline"
+                        >
+                          Scheduled
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Not Scheduled</span>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteContent(item.id)}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
@@ -847,6 +941,18 @@ const ContentTab = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Update Schedule Dialog */}
+        <UpdateScheduleDialog
+          isOpen={isUpdateScheduleDialogOpen}
+          onClose={() => {
+            setIsUpdateScheduleDialogOpen(false);
+            setSelectedContentForScheduleUpdate(null);
+          }}
+          contentData={selectedContentForScheduleUpdate}
+          onUpdate={handleScheduleUpdate}
+          convertUTCToIST={convertUTCToIST}
+        />
       </CardContent>
     </Card>
   );
