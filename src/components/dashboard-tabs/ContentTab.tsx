@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useContents } from "@/hooks/useContents";
 import { Loader2, Plus, RefreshCw, Trash2, Eye, ExternalLink, Edit, Save, Send, Calendar } from "lucide-react";
 import ScheduleContentDialog from "@/components/ScheduleContentDialog";
-import ScheduleDisplay from "@/components/ScheduleDisplay";
 
 const ContentTab = () => {
   const { toast } = useToast();
@@ -565,7 +564,6 @@ const ContentTab = () => {
                 <TableHead className="text-white">Type</TableHead>
                 <TableHead className="text-white">Platform</TableHead>
                 <TableHead className="text-white">Status</TableHead>
-                <TableHead className="text-white">Schedule</TableHead>
                 <TableHead className="text-white">Created</TableHead>
                 <TableHead className="text-white">Actions</TableHead>
               </TableRow>
@@ -600,15 +598,6 @@ const ContentTab = () => {
                     </span>
                   </TableCell>
                   <TableCell className="text-gray-300">{formatDate(item.created_at)}</TableCell>
-                  <TableCell>
-                    <ScheduleDisplay 
-                      contentId={item.id} 
-                      onScheduleUpdate={() => {
-                        // Optionally refresh content list or update local state
-                        console.log('Schedule updated for content:', item.id);
-                      }}
-                    />
-                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button
