@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,10 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useContents } from "@/hooks/useContents";
-import { useContentSchedules } from "@/hooks/useContentSchedules";
 import { Loader2, Plus, RefreshCw, Trash2, Eye, ExternalLink, Edit, Save, Send, Calendar } from "lucide-react";
 import ScheduleContentDialog from "@/components/ScheduleContentDialog";
-import ContentScheduleModal from "@/components/ContentScheduleModal";
 
 const ContentTab = () => {
   const { toast } = useToast();
@@ -27,21 +25,12 @@ const ContentTab = () => {
     fetchContents 
   } = useContents();
 
-  const { 
-    contentSchedules,
-    loading: schedulesLoading,
-    fetchContentSchedules,
-    getScheduleInfo
-  } = useContentSchedules();
-
   const [selectedContent, setSelectedContent] = useState<number[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [selectedContentForSchedule, setSelectedContentForSchedule] = useState<any>(null);
   const [viewingContent, setViewingContent] = useState<any>(null);
   const [editingContent, setEditingContent] = useState<any>(null);
   const [editContentText, setEditContentText] = useState("");
@@ -51,14 +40,6 @@ const ContentTab = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-
-  // Fetch content schedules when contents change
-  useEffect(() => {
-    if (contents.length > 0) {
-      const contentIds = contents.map(content => content.id);
-      fetchContentSchedules(contentIds);
-    }
-  }, [contents, fetchContentSchedules]);
 
   // Form state for creating new content
   const [newContent, setNewContent] = useState({
@@ -368,50 +349,8 @@ const ContentTab = () => {
     setIsScheduleDialogOpen(true);
   };
 
-  const handleRefresh = () => {
-    fetchContents();
-    if (contents.length > 0) {
-      const contentIds = contents.map(content => content.id);
-      fetchContentSchedules(contentIds);
-    }
-  };
-
   const getSelectedContentItems = () => {
     return contents.filter(content => selectedContent.includes(content.id));
-  };
-
-  const handleScheduleClick = (content: any) => {
-    setSelectedContentForSchedule(content);
-    setIsScheduleModalOpen(true);
-  };
-
-  const handleScheduleUpdated = () => {
-    // Refresh schedules after update
-    if (contents.length > 0) {
-      const contentIds = contents.map(content => content.id);
-      fetchContentSchedules(contentIds);
-    }
-  };
-
-  const renderScheduleStatus = (content: any) => {
-    const scheduleInfo = getScheduleInfo(content.id);
-    
-    if (scheduleInfo.hasSchedule) {
-      return (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleScheduleClick(content)}
-          className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-        >
-          Scheduled ({scheduleInfo.schedules.length})
-        </Button>
-      );
-    } else {
-      return (
-        <span className="text-gray-400 text-sm">Not Scheduled</span>
-      );
-    }
   };
 
   const getStatusColor = (status: string | null) => {
@@ -548,7 +487,7 @@ const ContentTab = () => {
             </Dialog>
 
             <Button 
-              onClick={handleRefresh}
+              onClick={fetchContents}
               variant="outline"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
@@ -626,7 +565,6 @@ const ContentTab = () => {
                 <TableHead className="text-white">Platform</TableHead>
                 <TableHead className="text-white">Status</TableHead>
                 <TableHead className="text-white">Created</TableHead>
-                <TableHead className="text-white">Schedule</TableHead>
                 <TableHead className="text-white">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -660,9 +598,6 @@ const ContentTab = () => {
                     </span>
                   </TableCell>
                   <TableCell className="text-gray-300">{formatDate(item.created_at)}</TableCell>
-                  <TableCell>
-                    {renderScheduleStatus(item)}
-                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button
@@ -729,21 +664,6 @@ const ContentTab = () => {
           }}
           selectedContent={getSelectedContentItems()}
         />
-
-        {/* Content Schedule Modal */}
-        {selectedContentForSchedule && (
-          <ContentScheduleModal
-            isOpen={isScheduleModalOpen}
-            onClose={() => {
-              setIsScheduleModalOpen(false);
-              setSelectedContentForSchedule(null);
-            }}
-            contentId={selectedContentForSchedule.id}
-            contentTitle={selectedContentForSchedule.content || `Content #${selectedContentForSchedule.id}`}
-            scheduleInfo={getScheduleInfo(selectedContentForSchedule.id)}
-            onScheduleUpdated={handleScheduleUpdated}
-          />
-        )}
 
         {/* View Content Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
