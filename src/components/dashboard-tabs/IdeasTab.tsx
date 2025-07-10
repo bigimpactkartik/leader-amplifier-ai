@@ -522,7 +522,7 @@ const IdeasTab = () => {
                     </span>
                   </TableCell>
                   <TableCell className="text-gray-300">
-                    {idea.priority_score ? (idea.priority_score * 100).toFixed(0) : '50'}%
+                    {idea.priority_score ? Math.round(idea.priority_score) : '5'}/10
                   </TableCell>
                   <TableCell className="text-gray-300">
                     {formatDate(idea.created_at)}
@@ -635,7 +635,7 @@ const IdeasTab = () => {
                 </div>
                 <div>
                   <Label className="text-white">Priority Score</Label>
-                  <p className="text-gray-300">{viewingIdea.priority_score ? (viewingIdea.priority_score * 100).toFixed(0) : '50'}%</p>
+                  <p className="text-gray-300">{viewingIdea.priority_score ? Math.round(viewingIdea.priority_score) : '5'}/10</p>
                 </div>
                 <div>
                   <Label className="text-white">Content</Label>
