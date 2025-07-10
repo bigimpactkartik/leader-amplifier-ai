@@ -130,51 +130,24 @@ export function useScheduledContent() {
   // Update scheduled content
   const updateScheduledContent = async (id: number, updates: ScheduledContentUpdate) => {
     try {
-      // If updating scheduled_at, use RPC function to handle cron rescheduling
-      if (updates.scheduled_at) {
-        const { data: session } = await supabase.auth.getSession()
-        if (!session.session?.access_token) {
-          throw new Error('User not authenticated')
-        }
+      const { data, error } = await supabase
+        .from('scheduled_content')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
 
-        const { data, error } = await supabase.rpc('update_schedule_and_reschedule', {
-          target_id: id,
-          new_time: updates.scheduled_at
-        })
+      if (error) {
+        throw error
+      }
 
-        if (error) {
-          throw error
-        }
-
-        // Re-fetch the updated data
-        await fetchScheduledContent()
-        
+      if (data) {
+        setScheduledContent(prev => prev.map(item => item.id === id ? data : item))
         toast({
           title: "Success",
-          description: "Schedule updated and rescheduled successfully"
+          description: "Scheduled content updated successfully"
         })
         return data
-      } else {
-        // For other updates that don't involve scheduling, use direct update
-        const { data, error } = await supabase
-          .from('scheduled_content')
-          .update(updates)
-          .eq('id', id)
-          .select()
-          .single()
-
-        if (error) {
-          throw error
-        }
-
-        if (data) {
-          setScheduledContent(prev => prev.map(item => item.id === id ? data : item))
-          toast({
-            title: "Success",
-            description: "Scheduled content updated successfully"
-          })
-          return data
-        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update scheduled content'
