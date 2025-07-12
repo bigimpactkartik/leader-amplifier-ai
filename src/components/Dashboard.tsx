@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, Lightbulb, FileText, Globe, BarChart3, MessageSquare, User, Settings, LogOut, Users } from "lucide-react";
+import { LayoutDashboard, Lightbulb, FileText, Globe, BarChart3, MessageSquare, User, Settings, LogOut, Users, Calendar } from "lucide-react";
 import IdeasTab from "./dashboard-tabs/IdeasTab";
 import ContentTab from "./dashboard-tabs/ContentTab";
 import SourcesTab from "./dashboard-tabs/SourcesTab";
 import TrackingTab from "./dashboard-tabs/TrackingTab";
 import PromptsTab from "./dashboard-tabs/PromptsTab";
 import UsersTab from "./dashboard-tabs/UsersTab";
+import ScheduledPostsTab from "./dashboard-tabs/ScheduledPostsTab";
 import UserProfile from "./UserProfile";
 import { useUsers } from "@/hooks/useUsers";
 import { useIdeas } from "@/hooks/useIdeas";
@@ -166,7 +167,7 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 mb-8 bg-white/10 backdrop-blur-sm border-white/20">
+            <TabsList className="grid w-full grid-cols-7 mb-8 bg-white/10 backdrop-blur-sm border-white/20">
               <TabsTrigger value="ideas" className="flex items-center space-x-2 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white">
                 <Lightbulb className="h-4 w-4" />
                 <span>Ideas</span>
@@ -174,6 +175,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
               <TabsTrigger value="content" className="flex items-center space-x-2 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white">
                 <FileText className="h-4 w-4" />
                 <span>Content</span>
+              </TabsTrigger>
+              <TabsTrigger value="scheduled" className="flex items-center space-x-2 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white">
+                <Calendar className="h-4 w-4" />
+                <span>Scheduled</span>
               </TabsTrigger>
               <TabsTrigger value="sources" className="flex items-center space-x-2 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-600 data-[state=active]:text-white">
                 <Globe className="h-4 w-4" />
@@ -199,6 +204,10 @@ const Dashboard = ({ onBack }: DashboardProps) => {
 
             <TabsContent value="content">
               <ContentTab />
+            </TabsContent>
+
+            <TabsContent value="scheduled">
+              <ScheduledPostsTab />
             </TabsContent>
 
             <TabsContent value="sources">
