@@ -3,15 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useScheduledContent } from "@/hooks/useScheduledContent";
 import { useUsers } from "@/hooks/useUsers";
-import { Loader2, RefreshCw, Calendar, Clock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, RefreshCw, Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { format } from "date-fns";
 
 const ScheduledPostsTab = () => {
-  const { scheduledContent, loading, fetchScheduledContent } = useScheduledContent();
+  const { scheduledContent, loading, fetchScheduledContent, updateScheduledContent } = useScheduledContent();
   const { currentUser } = useUsers();
+  const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [editingPost, setEditingPost] = useState<number | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editDateTime, setEditDateTime] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Filter scheduled content for current user
   const userScheduledContent = scheduledContent.filter(
@@ -25,6 +34,96 @@ const ScheduledPostsTab = () => {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const handleEditPost = (post: any) => {
+    setEditingPost(post.id);
+    
+    // Format the current scheduled time for the datetime-local input
+    if (post.scheduled_at) {
+      const date = new Date(post.scheduled_at);
+      // Convert to local timezone and format for datetime-local input (YYYY-MM-DDTHH:mm)
+      const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      setEditDateTime(localDateTime);
+    } else {
+      // Default to current time + 1 hour
+      const defaultTime = new Date();
+      defaultTime.setHours(defaultTime.getHours() + 1);
+      const localDateTime = new Date(defaultTime.getTime() - defaultTime.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      setEditDateTime(localDateTime);
+    }
+    
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!editingPost || !editDateTime) {
+      toast({
+        title: "Error",
+        description: "Please select a valid date and time",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate that the selected time is in the future
+    const selectedDate = new Date(editDateTime);
+    const now = new Date();
+    
+    if (selectedDate <= now) {
+      toast({
+        title: "Error",
+        description: "Please select a future date and time",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // Convert local datetime to UTC for storage
+      const utcDateTime = selectedDate.toISOString();
+      
+      await updateScheduledContent(editingPost, {
+        scheduled_at: utcDateTime
+      });
+      
+      toast({
+        title: "Success",
+        description: "Schedule updated successfully"
+      });
+      
+      setIsEditDialogOpen(false);
+      setEditingPost(null);
+      setEditDateTime("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update schedule. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditDialogOpen(false);
+    setEditingPost(null);
+    setEditDateTime("");
+  };
+
+  // Get minimum datetime (current time) for the input
+  const getMinDateTime = () => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
   };
 
   const formatScheduledTime = (scheduledAt: string | null) => {
@@ -152,6 +251,7 @@ const ScheduledPostsTab = () => {
                   <TableHead className="text-white">Status</TableHead>
                   <TableHead className="text-white">Posted At</TableHead>
                   <TableHead className="text-white">Created</TableHead>
+                  <TableHead className="text-white">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -172,6 +272,18 @@ const ScheduledPostsTab = () => {
                     <TableCell className="text-gray-300">
                       {format(new Date(item.created_at), "dd MMM yyyy")}
                     </TableCell>
+                    <TableCell>
+                      {item.status === 'pending' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditPost(item)}
+                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -188,6 +300,61 @@ const ScheduledPostsTab = () => {
           </div>
         )}
       </CardContent>
+
+      {/* Edit Schedule Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Scheduled Time</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-datetime" className="text-white">
+                Scheduled Date & Time
+              </Label>
+              <Input
+                id="edit-datetime"
+                type="datetime-local"
+                value={editDateTime}
+                min={getMinDateTime()}
+                onChange={(e) => setEditDateTime(e.target.value)}
+                className="bg-white/10 border-white/20 text-white"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Select a future date and time for posting
+              </p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleSaveSchedule}
+                disabled={isSaving || !editDateTime}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={handleCancelEdit}
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
