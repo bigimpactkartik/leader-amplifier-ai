@@ -37,7 +37,7 @@ const IdeasTab = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const platformContentTypes = {
-    LinkedIn: ["Article", "Post", "Newsletter", "Image"],
+    LinkedIn: ["Article", "Text Post", "Newsletter", "Image Post", "Video scripts"],
     Instagram: ["Reels", "Post", "Story", "Image"],
     YouTube: ["Video", "Shorts"],
     Twitter: ["Tweet", "Thread", "Image"],
