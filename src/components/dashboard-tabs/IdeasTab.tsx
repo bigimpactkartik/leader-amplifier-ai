@@ -87,7 +87,7 @@ const IdeasTab = () => {
   };
 
   // Function to call webhook for specific platform with idea ID
-  const callPlatformWebhook = async (platform: string, ideaId: number) => {
+  const callPlatformWebhook = async (platform: string, ideaId: number, contentType: string) => {
     const webhookUrl = webhookUrls[platform as keyof typeof webhookUrls];
     
     if (!webhookUrl) {
@@ -96,7 +96,7 @@ const IdeasTab = () => {
     }
 
     try {
-      console.log(`Calling ${platform} webhook for idea ID: ${ideaId}`);
+      console.log(`Calling ${platform} webhook for idea ID: ${ideaId}, content type: ${contentType}`);
       
       const response = await fetch(webhookUrl, {
         method: "POST",
@@ -105,7 +105,8 @@ const IdeasTab = () => {
         },
         mode: "no-cors", // Add this to handle CORS issues
         body: JSON.stringify({
-          id: ideaId // Send the idea ID as 'id' field
+        id: ideaId,
+          contentType: contentType // Add content type to the payload
         }),
       });
 
@@ -163,7 +164,7 @@ const IdeasTab = () => {
           // Call webhook for each idea in this platform
           const platformPromises = selections.map(async (selection) => {
             try {
-              await callPlatformWebhook(platform, selection.ideaId);
+              await callPlatformWebhook(platform, selection.ideaId, selection.contentType);
               return { success: true, ideaId: selection.ideaId };
             } catch (error) {
               console.error(`Failed webhook call for ${platform}, idea ${selection.ideaId}:`, error);
