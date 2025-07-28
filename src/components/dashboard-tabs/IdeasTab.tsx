@@ -523,7 +523,7 @@ const IdeasTab = () => {
                     </span>
                   </TableCell>
                   <TableCell className="text-gray-300">
-                    {idea.priority_score ? Math.round(idea.priority_score) : '5'}/10
+                    {idea.priority_score ? Math.round(idea.priority_score) : '5'}
                   </TableCell>
                   <TableCell className="text-gray-300">
                     {formatDate(idea.created_at)}
