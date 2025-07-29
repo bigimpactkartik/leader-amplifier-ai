@@ -493,7 +493,7 @@ const IdeasTab = () => {
                 <TableHead className="text-white">Status</TableHead>
                 <TableHead className="text-white">Priority</TableHead>
                 <TableHead className="text-white">Created</TableHead>
-                <TableHead className="text-white">Content Types</TableHead>
+                <TableHead className="text-white">Caregory </TableHead>
                 <TableHead className="text-white">Actions</TableHead>
               </TableRow>
             </TableHeader>
